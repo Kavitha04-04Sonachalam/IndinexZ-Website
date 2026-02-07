@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import SectionTitle from '../components/common/SectionTitle';
 import Button from '../components/common/Button';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
-import emailjs from '@emailjs/browser';
 
 const ContactPage = () => {
     const [formData, setFormData] = useState({
@@ -14,34 +13,85 @@ const ContactPage = () => {
     const [status, setStatus] = useState({ type: '', message: '' });
     const [loading, setLoading] = useState(false);
 
+    // Strict Phone Input Handler (Only numbers allowed)
+    const handlePhoneChange = (e) => {
+        const value = e.target.value;
+        // Allow only digits
+        if (/^\d*$/.test(value)) {
+            setFormData(prev => ({ ...prev, phone: value }));
+        }
+    };
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     const validate = () => {
-        if (!formData.name || !formData.email || !formData.message) {
-            setStatus({ type: 'error', message: 'Please fill in all required fields.' });
+        const { name, email, phone, message } = formData;
+
+        // 1. All fields required
+        if (!name || !email || !phone || !message) {
+            setStatus({ type: 'error', message: 'All fields are required.' });
             return false;
         }
+
+        // 2. Phone Validation (10-12 digits)
+        if (phone.length < 10 || phone.length > 12) {
+            setStatus({ type: 'error', message: 'Phone number must be between 10 and 12 digits.' });
+            return false;
+        }
+
+        // 3. Email Validation (Restricted domains: .com, .in, .org)
+        // Regex explanation: 
+        // ^[^\s@]+       : Start with non-whitespace, non-@ characters
+        // @              : Must contain @
+        // [^\s@]+\.      : Domain name followed by dot
+        // (com|in|org)$  : Must end with strictly com, in, or org
+        const emailRegex = /^[^\s@]+@[^\s@]+\.(com|in|org)$/;
+        if (!emailRegex.test(email)) {
+            setStatus({ type: 'error', message: 'Invalid email. Allowed domains: .com, .in, .org' });
+            return false;
+        }
+
         return true;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+
         if (!validate()) return;
 
         setLoading(true);
         setStatus({ type: '', message: '' });
 
-        // NOTE: Replace these with your actual EmailJS Service ID, Template ID, and Public Key
-        // emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', formData, 'YOUR_PUBLIC_KEY')
+        try {
+            const response = await fetch("https://formspree.io/f/mwvnkbja", {
+                method: "POST",
+                body: JSON.stringify(formData),
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
 
-        // Simulating API call for demonstration
-        setTimeout(() => {
+            if (response.ok) {
+                setLoading(false);
+                setStatus({ type: 'success', message: 'Message sent successfully! We will contact you soon.' });
+                setFormData({ name: '', email: '', phone: '', message: '' });
+            } else {
+                const data = await response.json();
+                setLoading(false);
+                if (Object.hasOwn(data, 'errors')) {
+                    setStatus({ type: 'error', message: data["errors"].map(error => error["message"]).join(", ") });
+                } else {
+                    setStatus({ type: 'error', message: 'Failed to send message. Please try again later.' });
+                }
+            }
+        } catch (error) {
             setLoading(false);
-            setStatus({ type: 'success', message: 'Message sent successfully! We will get back to you soon.' });
-            setFormData({ name: '', email: '', phone: '', message: '' });
-        }, 1500);
+            setStatus({ type: 'error', message: 'Failed to send message. Please try again later.' });
+            console.error('Formspree Error:', error);
+        }
     };
 
     return (
@@ -112,14 +162,23 @@ const ContactPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-400 mb-2">Phone</label>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">Phone (10-12 digits) *</label>
                                     <input
-                                        type="tel"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
                                         name="phone"
                                         value={formData.phone}
-                                        onChange={handleChange}
+                                        onChange={handlePhoneChange}
                                         className="w-full bg-primary border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-neon focus:ring-1 focus:ring-neon transition-all"
-                                        placeholder="+91 98765 43210"
+                                        placeholder="9876543210"
+                                        onPaste={(e) => {
+                                            // Prevent pasting non-numeric content
+                                            const pastedData = e.clipboardData.getData('text');
+                                            if (!/^\d*$/.test(pastedData)) {
+                                                e.preventDefault();
+                                            }
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -154,7 +213,7 @@ const ContactPage = () => {
                                 </div>
                             )}
 
-                            <Button type="submit" variant="primary" className="w-full flex justify-center items-center gap-2">
+                            <Button type="submit" variant="primary" className="w-full flex justify-center items-center gap-2" disabled={loading}>
                                 {loading ? 'Sending...' : <>Send Message <Send size={18} /></>}
                             </Button>
                         </form>
