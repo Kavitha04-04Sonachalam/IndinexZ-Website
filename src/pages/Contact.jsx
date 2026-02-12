@@ -138,9 +138,10 @@ const ContactPage = () => {
                                 </div>
                                 <div>
                                     <h4 className="text-lg font-semibold text-white mb-1">Email</h4>
-                                    <a href="mailto:m.visahar@gmail.com" className="text-muted hover:text-white transition-colors">m.visahar@gmail.com</a>
+                                    <a href="Visahar@indinexz.com" className="text-muted hover:text-white transition-colors">Visahar@indinexz.com</a>
                                 </div>
                             </div>
+                            
                         </div>
                     </div>
 
