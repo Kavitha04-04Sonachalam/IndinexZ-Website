@@ -65,7 +65,7 @@ const ContactPage = () => {
         setStatus({ type: '', message: '' });
 
         try {
-            const response = await fetch("https://formspree.io/f/mwvnkbja", {
+            const response = await fetch("https://formspree.io/f/mwvnlvbr", {
                 method: "POST",
                 body: JSON.stringify(formData),
                 headers: {
